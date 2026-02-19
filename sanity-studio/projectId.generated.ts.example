@@ -1,0 +1,3 @@
+// Copy to projectId.generated.ts and set your values, or let scripts/sanity-deploy.sh create it.
+export const projectId = 'your-project-id'
+export const dataset = 'production'

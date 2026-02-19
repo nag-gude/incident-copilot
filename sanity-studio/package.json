@@ -1,0 +1,25 @@
+{
+  "name": "incident-copilot-studio",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Sanity Studio for Incident Copilot - incidents and similar past incidents",
+  "scripts": {
+    "dev": "sanity dev",
+    "build": "sanity build",
+    "deploy": "sanity deploy",
+    "start": "sanity start"
+  },
+  "keywords": ["sanity", "incident-copilot"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "sanity": "^3.49.0",
+    "styled-components": "^6.1.15"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "typescript": "^5.0.0"
+  }
+}
