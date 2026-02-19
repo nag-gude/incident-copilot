@@ -1,6 +1,6 @@
 # Incident Copilot
 
-![Incident Copilot Logo](Thumbnail.png)
+![Incident Copilot Logo](assets/Thumbnail.png)
 
 **Tagline:** Turn alerts into root cause, citations, and remediation scripts.
 
