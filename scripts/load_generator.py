@@ -87,13 +87,13 @@ def run_error_burst(iteration: int):
 
 
 def main():
+    global INGESTION_URL
     parser = argparse.ArgumentParser(description="Incident Copilot load generator")
     parser.add_argument("--url", default=INGESTION_URL, help="Ingestion service URL")
     parser.add_argument("--duration", type=int, default=0, help="Run for N seconds (0=forever)")
     parser.add_argument("--interval", type=float, default=1.0, help="Seconds between iterations")
     args = parser.parse_args()
 
-    global INGESTION_URL
     INGESTION_URL = args.url.rstrip("/")
 
     print(f"Load generator -> {INGESTION_URL}")
