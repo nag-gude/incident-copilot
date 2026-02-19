@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Incident Copilot – AI Observability Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="brand">
+        <div class="brand-icon">⚡</div>
+        <div>
+          <h1>Incident Copilot</h1>
+          <p>AI observability – root cause, citations & remediation</p>
+        </div>
+      </div>
+      <div class="health-row" id="health"></div>
+      <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+        <div class="auto-refresh-wrap">
+          <input type="checkbox" id="autoRefreshToggle" checked>
+          <label for="autoRefreshToggle">Auto-refresh</label>
+        </div>
+        <span class="last-refresh" id="refreshIntervalLabel">Refreshing every 15 s</span>
+        <span class="last-refresh" id="lastRefresh">—</span>
+      </div>
+    </header>
+    <div class="layout">
+      <nav class="sidebar">
+        <div class="sidebar-title">Navigation</div>
+        <a class="nav-link active" href="#" data-section="dashboard"><span class="icon">📊</span><span>Dashboard</span></a>
+        <a class="nav-link" href="#" data-section="anomalies"><span class="icon">⚠️</span><span>Anomalies</span></a>
+        <a class="nav-link" href="#" data-section="incidents"><span class="icon">🔔</span><span>Incidents</span></a>
+        <a class="nav-link" href="#" data-section="logs"><span class="icon">📜</span><span>Logs</span></a>
+        <a class="nav-link" href="#" data-section="similar"><span class="icon">🔗</span><span>Similar</span></a>
+      </nav>
+      <main class="main-wrap">
+        <div class="main" style="padding: 1.5rem;">
+          <div class="quick-actions-card">
+            <div class="card-title">Quick Actions</div>
+<div class="actions">
+                <button type="button" class="btn btn-primary" data-action="detect">Detect anomalies</button>
+                <button type="button" class="btn btn-secondary" data-action="predict">Run prediction</button>
+                <button type="button" class="btn btn-secondary" data-action="explain">Create incident</button>
+                <label style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.85rem;">
+                  <input type="checkbox" id="autoRemediateToggle">
+                  Auto-remediate on create
+                </label>
+                <button type="button" class="btn btn-ghost" data-action="refresh">Refresh</button>
+              </div>
+          </div>
+          <div id="summaryBanner" class="summary-banner"></div>
+          <div id="kpiRow" class="kpi-row"></div>
+          <div id="content" class="loading">Loading...</div>
+        </div>
+      </main>
+    </div>
+  </div>
+  <div id="modal" class="modal-overlay" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Remediation script</span>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <pre id="modalBody"></pre>
+      </div>
+    </div>
+  </div>
+  <div id="toast"></div>
+  <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>
