@@ -1,0 +1,100 @@
+services:
+  ingestion:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ingestion
+    ports:
+      - "8001:8001"
+    environment:
+      - DATABASE_URL=sqlite:////app/data/incident_copilot.db
+    volumes:
+      - incident-copilot-data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  anomaly:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.anomaly
+    ports:
+      - "8002:8002"
+    environment:
+      - DATABASE_URL=sqlite:////app/data/incident_copilot.db
+      - INGESTION_URL=http://ingestion:8001
+    volumes:
+      - incident-copilot-data:/app/data
+    depends_on:
+      - ingestion
+
+  prediction:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.prediction
+    ports:
+      - "8003:8003"
+    environment:
+      - DATABASE_URL=sqlite:////app/data/incident_copilot.db
+      - INGESTION_URL=http://ingestion:8001
+      - ANOMALY_URL=http://anomaly:8002
+    volumes:
+      - incident-copilot-data:/app/data
+    depends_on:
+      - ingestion
+      - anomaly
+
+  recommendation:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.recommendation
+    ports:
+      - "8004:8004"
+    environment:
+      - DATABASE_URL=sqlite:////app/data/incident_copilot.db
+      - ANOMALY_URL=http://anomaly:8002
+      - YOUCOM_API_KEY=${YOUCOM_API_KEY:-}
+    volumes:
+      - incident-copilot-data:/app/data
+    depends_on:
+      - anomaly
+
+  knowledge:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.knowledge
+    ports:
+      - "8005:8005"
+    environment:
+      - DATABASE_URL=sqlite:////app/data/incident_copilot.db
+      - RECOMMENDATION_URL=http://recommendation:8004
+      - SANITY_PROJECT_ID=${SANITY_PROJECT_ID:-}
+      - SANITY_DATASET=${SANITY_DATASET:-production}
+      - SANITY_TOKEN=${SANITY_TOKEN:-}
+    volumes:
+      - incident-copilot-data:/app/data
+    depends_on:
+      - recommendation
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - INGESTION_URL=http://ingestion:8001
+      - ANOMALY_URL=http://anomaly:8002
+      - PREDICTION_URL=http://prediction:8003
+      - RECOMMENDATION_URL=http://recommendation:8004
+      - KNOWLEDGE_URL=http://knowledge:8005
+    depends_on:
+      - ingestion
+      - anomaly
+      - prediction
+      - recommendation
+      - knowledge
+
+volumes:
+  incident-copilot-data:
