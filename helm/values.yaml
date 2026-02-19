@@ -1,0 +1,48 @@
+# Incident Copilot Helm - Default values
+environment: dev
+replicaCount: 1
+imageTag: latest
+imagePullPolicy: IfNotPresent
+imageRegistry: ""
+
+global:
+  namespace: incident-copilot
+
+ingestion:
+  replicaCount: 1
+  port: 8001
+
+anomaly:
+  replicaCount: 1
+  port: 8002
+
+prediction:
+  replicaCount: 1
+  port: 8003
+
+recommendation:
+  replicaCount: 1
+  port: 8004
+
+knowledge:
+  replicaCount: 1
+  port: 8005
+
+apiGateway:
+  replicaCount: 1
+  port: 8000
+
+ingress:
+  enabled: false
+  host: incident-copilot.local
+  className: nginx
+  tls:
+    enabled: false
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi

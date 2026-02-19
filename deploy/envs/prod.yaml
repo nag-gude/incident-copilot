@@ -1,0 +1,32 @@
+# Incident Copilot - Production Environment
+environment: prod
+imageTag: prod
+imagePullPolicy: Always
+
+ingestion:
+  replicaCount: 2
+anomaly:
+  replicaCount: 2
+prediction:
+  replicaCount: 2
+recommendation:
+  replicaCount: 2
+knowledge:
+  replicaCount: 2
+apiGateway:
+  replicaCount: 2
+
+ingress:
+  enabled: true
+  host: incident-copilot.example.com
+  className: nginx
+  tls:
+    enabled: true
+
+resources:
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi

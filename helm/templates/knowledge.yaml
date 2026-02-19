@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: knowledge
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: knowledge
+spec:
+  replicas: {{ .Values.knowledge.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      app: knowledge
+  template:
+    metadata:
+      labels:
+        app: knowledge
+    spec:
+      containers:
+        - name: knowledge
+          image: "{{ .Values.imageRegistry }}incident-copilot/knowledge:{{ .Values.imageTag | default "latest" }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
+          ports:
+            - containerPort: 8005
+          envFrom:
+            - configMapRef:
+                name: incident-copilot-config
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: incident-copilot-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: knowledge
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: knowledge
+  ports:
+    - port: 8005
+      targetPort: 8005

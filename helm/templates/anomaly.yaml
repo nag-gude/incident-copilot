@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: anomaly
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: anomaly
+spec:
+  replicas: {{ .Values.anomaly.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      app: anomaly
+  template:
+    metadata:
+      labels:
+        app: anomaly
+    spec:
+      containers:
+        - name: anomaly
+          image: "{{ .Values.imageRegistry }}incident-copilot/anomaly:{{ .Values.imageTag | default "latest" }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
+          ports:
+            - containerPort: 8002
+          envFrom:
+            - configMapRef:
+                name: incident-copilot-config
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: incident-copilot-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: anomaly
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: anomaly
+  ports:
+    - port: 8002
+      targetPort: 8002

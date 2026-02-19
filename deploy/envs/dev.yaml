@@ -1,0 +1,32 @@
+# Incident Copilot - Dev Environment
+environment: dev
+imageTag: latest
+imagePullPolicy: IfNotPresent
+
+ingestion:
+  replicaCount: 1
+anomaly:
+  replicaCount: 1
+prediction:
+  replicaCount: 1
+recommendation:
+  replicaCount: 1
+knowledge:
+  replicaCount: 1
+apiGateway:
+  replicaCount: 1
+
+ingress:
+  enabled: true
+  host: incident-copilot-dev.local
+  className: nginx
+  tls:
+    enabled: false
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi

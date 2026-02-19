@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: incident-copilot-config
+  namespace: {{ .Release.Namespace }}
+data:
+  DATABASE_URL: "sqlite:////data/incident_copilot.db"
+  INGESTION_URL: "http://ingestion:8001"
+  ANOMALY_URL: "http://anomaly:8002"
+  PREDICTION_URL: "http://prediction:8003"
+  RECOMMENDATION_URL: "http://recommendation:8004"
+  KNOWLEDGE_URL: "http://knowledge:8005"

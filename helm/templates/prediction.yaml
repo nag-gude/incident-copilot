@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prediction
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: prediction
+spec:
+  replicas: {{ .Values.prediction.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      app: prediction
+  template:
+    metadata:
+      labels:
+        app: prediction
+    spec:
+      containers:
+        - name: prediction
+          image: "{{ .Values.imageRegistry }}incident-copilot/prediction:{{ .Values.imageTag | default "latest" }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
+          ports:
+            - containerPort: 8003
+          envFrom:
+            - configMapRef:
+                name: incident-copilot-config
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: incident-copilot-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prediction
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: prediction
+  ports:
+    - port: 8003
+      targetPort: 8003

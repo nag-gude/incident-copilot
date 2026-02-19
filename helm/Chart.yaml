@@ -1,0 +1,5 @@
+apiVersion: v2
+name: incident-copilot
+description: Incident Copilot - Turn alerts into root cause, citations, and remediation scripts
+version: 1.0.0
+appVersion: "1.0.0"

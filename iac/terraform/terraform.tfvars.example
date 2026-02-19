@@ -1,0 +1,8 @@
+# Copy to terraform.tfvars and fill in values
+# NEVER commit terraform.tfvars with secrets
+
+environment   = "dev"
+region        = "us-east"
+cluster_label = "incident-copilot"
+
+# linode_token: pass via env: export TF_VAR_linode_token="your-token"

@@ -1,0 +1,368 @@
+# Incident Copilot AI - Sponsor Integrations
+
+Detailed documentation for You.com API, Cline CLI, and Sanity (Structured Knowledge Base).
+
+
+## Table of Contents
+
+1. [You.com API](#youcom-api)
+2. [Cline CLI](#cline-cli)
+3. [Sanity (Structured Knowledge Base)](#sanity-structured-knowledge-base)
+
+
+## You.com API
+
+### Overview
+
+You.com provides AI search infrastructure with **live web data** and **citation-backed results**. Incident Copilot uses You.com to enrich remediation recommendations with up-to-date documentation, runbooks, and Stack Overflow answers.
+
+**Hackathon resource:** [https://you.com/resources/hackathon](https://you.com/resources/hackathon)
+
+### Use in Incident Copilot
+
+- **Service:** Recommendation (`services/recommendation/main.py`)
+- **Trigger:** When `POST /explain` is called (incident creation)
+- **Flow:** Root cause identified → You.com search for remediation docs → Citations returned with recommendations
+
+### API Details
+
+#### Base URL
+
+```
+https://ydc-index.io/v1/search
+```
+
+#### Authentication
+
+- **Header:** `X-API-Key: <your-api-key>`
+- **Get API key:** [You.com Developer Portal](https://you.com/) or hackathon signup
+
+#### Request (Search API)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/v1/search` | Web search with citations |
+
+**Query parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `query` | string | Search query (required) |
+| `count` | int | Number of results (default: 10, max: 100) |
+
+**Example:**
+```bash
+curl -X GET "https://ydc-index.io/v1/search?query=Kubernetes+OOMKilled+remediation&count=5" \
+  -H "X-API-Key: YOUR_API_KEY"
+```
+
+#### Response
+
+The API returns `results.web` and `results.news`. Each web item includes `title`, `url`, `description`, and `snippets` (array). Incident Copilot maps these to `youcom_citations` in the incident response.
+
+### Configuration
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `YOUCOM_API_KEY` | You.com API key | Yes (for live search) |
+
+**Without API key:** Incident Copilot returns a placeholder citation instructing users to set `YOUCOM_API_KEY`.
+
+### Kubernetes / Docker
+
+Add as a Secret and mount as env:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: incident-copilot-secrets
+  namespace: incident-copilot
+type: Opaque
+stringData:
+  YOUCOM_API_KEY: "your-api-key"
+---
+# In recommendation deployment:
+env:
+  - name: YOUCOM_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: incident-copilot-secrets
+        key: YOUCOM_API_KEY
+```
+
+### Rate Limits and Caching
+
+- You.com may enforce rate limits; cache results for repeated queries if needed
+- Incident Copilot makes one search call per `POST /explain`; avoid excessive explain calls in tight loops
+
+
+## Cline CLI
+
+### Overview
+
+Cline is an AI coding assistant with a **CLI** that can be invoked programmatically. Incident Copilot uses Cline CLI as **infrastructure**—orchestrating it to generate remediation scripts (scaling, rollback, config patches) from incident context.
+
+**CLINE challenge:** [Cline CLI as Infrastructure](https://developerweek-2026-hackathon.devpost.com/)
+
+### Use in Incident Copilot
+
+- **Service:** Recommendation (`services/recommendation/main.py`)
+- **Trigger:** When `POST /remediate/<incident_id>` is called
+- **Flow:** Incident context (error type, service) → Cline CLI invoked → Script returned
+
+### Invocation
+
+Incident Copilot invokes:
+
+```bash
+cline generate --context=error:<error_type>,service:<service>
+```
+
+**Note:** The `cline generate` subcommand is part of the DeveloperWeek hackathon integration spec. If your Cline CLI version does not support it, Incident Copilot falls back to a mock script.
+
+**Fallback:** If Cline CLI is not installed or times out, Incident Copilot returns a **mock script** so the demo works without Cline. The mock output is acceptable for hackathon demos.
+
+### Installation
+
+1. **Prerequisites:** Node.js 20+ (recommend Node.js 22)
+2. Install Cline CLI globally:
+   ```bash
+   npm install -g cline
+   ```
+3. Authenticate (required before use):
+   ```bash
+   cline auth
+   ```
+4. Ensure `cline` is in `PATH`:
+   ```bash
+   which cline
+   cline version
+   ```
+   If `cline` is not found, add npm's global bin to PATH:
+   ```bash
+   export PATH="$PATH:$(npm bin -g)"
+   ```
+
+### Integration Details
+
+| Aspect | Details |
+|--------|---------|
+| **Subprocess** | `subprocess.run(["cline", "generate", ...], capture_output=True, timeout=30)` |
+| **Input** | Error type (truncated), service name |
+| **Output** | Generated script (stdout) |
+| **Timeout** | 30 seconds |
+| **Failure** | Returns mock kubectl scaling/restart script |
+
+### Mock Output (No Cline)
+
+When Cline is not available, Incident Copilot returns:
+
+```yaml
+# Remediation script for <error_type> (service: <service>)
+# Generated by Incident Copilot AI - Cline CLI integration (mock when CLI not installed)
+kubectl scale deployment/<service> --replicas=2
+kubectl rollout restart deployment/<service>
+kubectl rollout status deployment/<service>
+```
+
+### Docker / Kubernetes
+
+- Cline CLI must be installed **inside the recommendation container** if you want real Cline output in K8s
+- For hackathon demo, mock output is acceptable; document the architecture and intent
+
+### CLI Usage
+
+```bash
+# Create incident first
+curl -X POST http://localhost:8004/explain -H "Content-Type: application/json" -d '{}'
+
+# Generate remediation (replace <incident_id> with returned id)
+incident-copilot remediate <incident_id>
+```
+
+**If the CLI is not installed** (`command not found: incident-copilot`), install it from the repo root: `cd cli && pip install -e .` then run the command again. Or call the API directly:
+
+```bash
+# Via recommendation service (port 8004)
+curl -s -X POST "http://localhost:8004/remediate/<incident_id>"
+
+# Via gateway (port 8000)
+curl -s -X POST "http://localhost:8000/remediate/<incident_id>"
+```
+
+
+## Sanity (Structured Knowledge Base)
+
+### Overview
+
+Sanity is a **headless CMS** with **structured content** and **GROQ** (Graph-Relational Object Queries). Incident Copilot uses Sanity to store runbooks and incident history with **queryable relationships** (e.g., "similar past incidents," "incidents by service").
+
+**Sanity docs:** [https://www.sanity.io/docs](https://www.sanity.io/docs)  
+**GROQ:** [https://www.sanity.io/docs/groq](https://www.sanity.io/docs/groq)  
+**MCP Server (Cursor):** [https://www.sanity.io/docs/mcp-server](https://www.sanity.io/docs/mcp-server)
+
+### Use in Incident Copilot
+
+- **Service:** Knowledge (`services/knowledge/main.py`)
+- **Features:** Similar incidents, incidents by service, runbooks
+- **Storage:** Local SQLite by default; Sanity as optional backend when `SANITY_PROJECT_ID` is set
+
+### Sanity Setup
+
+1. Create project: [https://www.sanity.io/get-started](https://www.sanity.io/get-started)
+2. Note **Project ID** and **Dataset** (e.g., `production`)
+3. (Optional) Create API token for writes
+
+### Schema (Recommended)
+
+Define document types in Sanity Studio:
+
+| Type | Purpose |
+|------|---------|
+| `incident` | Root cause, service, remediation reference |
+| `service` | Service metadata |
+| `remediation` | Remediation steps, references to incidents |
+| `runbook` | Error pattern, steps, service reference |
+
+**Example GROQ for similar incidents:**
+```groq
+*[_type == "incident" && service == $service] | order(_createdAt desc) [0...10] {
+  _id, service, rootCause, "incidentId": _id
+}
+```
+
+### GROQ API
+
+**Endpoint:**
+```
+https://<projectId>.api.sanity.io/v2024-01-01/data/query/<dataset>?query=<GROQ>
+```
+
+**Example:**
+```bash
+curl "https://abc123.api.sanity.io/v2024-01-01/data/query/production?query=*[_type%20%3D%3D%20%22incident%22][0...5]"
+```
+
+### Configuration
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `SANITY_PROJECT_ID` | Sanity project ID | Yes (for Sanity queries) |
+| `SANITY_DATASET` | Dataset name | No (default: `production`) |
+| `SANITY_TOKEN` | API token | No (for reads; use for private datasets or writes) |
+
+### Deploy Sanity Studio from CLI (automated)
+
+The repo includes a **Sanity Studio** in `sanity-studio/` with the Incident Copilot `incident` schema. You can deploy it with the Sanity CLI so you don’t configure schema by hand.
+
+**Prerequisites**
+
+- Node.js 18+
+- [Sanity CLI](https://www.sanity.io/docs/cli): `npm install -g sanity` (or use `npx sanity`)
+- Log in once: `sanity login`
+
+**One-time: create a Sanity project**
+
+Create a project in the dashboard and copy its Project ID, or use the CLI:
+
+```bash
+# Optional: create project non-interactively (requires org ID from sanity.io/manage)
+sanity init --create-project "Incident Copilot" --dataset production --output-path ./sanity-studio -y
+# Then copy the project ID from the created sanity.cli.ts or from sanity.io/manage into .env
+```
+
+Or create a project at [sanity.io/manage](https://www.sanity.io/manage) and copy the **Project ID** into `.env`.
+
+**Deploy Studio**
+
+From the repo root, with `SANITY_PROJECT_ID` (and optionally `SANITY_DATASET`) in `.env`:
+
+```bash
+# Option A: Makefile
+make sanity-deploy
+
+# Option B: Script (loads .env from repo root)
+./scripts/sanity-deploy.sh
+```
+
+The script installs dependencies in `sanity-studio/`, then runs `sanity deploy --yes`. The Studio will be available at `https://<SANITY_PROJECT_ID>.sanity.studio`.
+
+**Other commands**
+
+- `make sanity-install` – install npm deps in `sanity-studio/`
+- `make sanity-dev` – run Studio locally (`npm run dev` in sanity-studio)
+
+**Wire Incident Copilot to Sanity**
+
+1. Set in `.env`: `SANITY_PROJECT_ID=your-id`, `SANITY_DATASET=production`
+2. Restart services: `docker-compose down && docker-compose up -d`
+3. In the deployed Studio, create **Incident** documents (service, root cause). They will show up in the dashboard **Similar** section.
+
+### Local deployment with Sanity
+
+For **Docker Compose** (local) with Sanity:
+
+1. Create a project at [sanity.io/get-started](https://www.sanity.io/get-started) or [sanity.io/manage](https://www.sanity.io/manage) and note **Project ID** and **Dataset**.
+2. Deploy the repo’s Studio from CLI (see [Deploy Sanity Studio from CLI](#deploy-sanity-studio-from-cli-automated) above), or add the `incident` schema manually in Sanity Studio.
+3. In your project root, copy `.env.example` to `.env` and set `SANITY_PROJECT_ID` and `SANITY_DATASET`.
+4. Restart: `docker-compose down && docker-compose up -d`.
+5. Check knowledge health: `curl http://localhost:8005/health` → expect `"sanity_configured": true`. Create incident documents in Studio; they will appear in the dashboard **Similar** section.
+
+Full steps: [DEPLOYMENT-LOCAL.md](DEPLOYMENT-LOCAL.md#optional-sanity-integration).
+
+### Incident schema for Sanity Studio
+
+The Knowledge service expects Sanity documents with `_type == "incident"` and fields `service`, `rootCause` (or `root_cause`). The repo’s **sanity-studio** already includes this schema; if you are not using the CLI deploy, you can add it manually. Example schema (already in `sanity-studio/schemas/incident.ts`):
+
+```javascript
+// Minimal incident type for Incident Copilot similar-incidents
+export default {
+  name: 'incident',
+  type: 'document',
+  title: 'Incident',
+  fields: [
+    { name: 'service', type: 'string', title: 'Service' },
+    { name: 'rootCause', type: 'text', title: 'Root cause' },
+    { name: 'incidentId', type: 'string', title: 'Incident ID (optional)' },
+  ],
+}
+```
+
+Or with GROQ-friendly `rootCause` only (Knowledge normalizes both):
+
+- **service** (string) – e.g. `api-gateway`, `ingestion`
+- **rootCause** (text) – root cause description
+
+After deploying the schema, create a few incident documents in Studio. The dashboard **Similar past incidents** section will merge them with local incident refs.
+
+### Incident Copilot Knowledge Service
+
+- **Local DB:** Stores `runbooks` and `incident_refs`; used for `similar-incidents` and `incidents-by-service`
+- **Sanity:** When `SANITY_PROJECT_ID` is set, `sanity_query()` can run GROQ; extend `similar-incidents` to query Sanity
+- **Sync:** `POST /sync-incident` copies incidents from Recommendation into Knowledge local DB
+
+### GROQ Examples for Incident Copilot
+
+**All incidents by service:**
+```groq
+*[_type == "incident"] {
+  "service": service->name,
+  "incidents": *[_type == "incident" && references(^._id)] { _id, rootCause }
+}
+```
+
+**Similar incidents (by root cause text):**
+```groq
+*[_type == "incident" && rootCause match $pattern] | order(_createdAt desc) [0...10]
+```
+
+### Cursor + Sanity MCP
+
+For schema design and content authoring with Cursor, use the [Sanity MCP Server](https://www.sanity.io/docs/mcp-server). This enables structured content workflows directly from Cursor.
+
+
+## See Also
+
+- [PREREQUISITES.md](PREREQUISITES.md) – Required tools and environment setup
+- [SETUP.md](SETUP.md) – Environment setup (Local, Dev, Staging, Production)
+- [IMPLEMENTATION.md](IMPLEMENTATION.md) – Architecture and sponsor integration points

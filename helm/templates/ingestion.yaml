@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingestion
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: ingestion
+spec:
+  replicas: {{ .Values.ingestion.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      app: ingestion
+  template:
+    metadata:
+      labels:
+        app: ingestion
+    spec:
+      containers:
+        - name: ingestion
+          image: "{{ .Values.imageRegistry }}incident-copilot/ingestion:{{ .Values.imageTag | default "latest" }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
+          ports:
+            - containerPort: 8001
+          envFrom:
+            - configMapRef:
+                name: incident-copilot-config
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: incident-copilot-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingestion
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: ingestion
+  ports:
+    - port: 8001
+      targetPort: 8001

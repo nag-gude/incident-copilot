@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recommendation
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: recommendation
+spec:
+  replicas: {{ .Values.recommendation.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      app: recommendation
+  template:
+    metadata:
+      labels:
+        app: recommendation
+    spec:
+      containers:
+        - name: recommendation
+          image: "{{ .Values.imageRegistry }}incident-copilot/recommendation:{{ .Values.imageTag | default "latest" }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
+          ports:
+            - containerPort: 8004
+          envFrom:
+            - configMapRef:
+                name: incident-copilot-config
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: incident-copilot-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: recommendation
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: recommendation
+  ports:
+    - port: 8004
+      targetPort: 8004
